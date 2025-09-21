@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Konversi Lembur Multi RO dengan Total Waktu</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.5; margin: 20px;">
+
+  <h2>Form Input Lembur</h2>
+
+  <div class="formBlock" style="padding:10px; border:1px solid #ccc; background:#f9f9f9; margin-bottom:20px;">
+    RO: <input type="text" id="ro" style="width:150px;"> <button type="button" onclick="clearInput('ro')">Hapus</button><br><br>
+    Nama: <input type="text" id="nama" style="width:150px;"> <button type="button" onclick="clearInput('nama')">Hapus</button><br><br>
+    Nama Barang: <input type="text" id="barang" style="width:150px;"> <button type="button" onclick="clearInput('barang')">Hapus</button><br><br>
+    Jenis Print: <input type="text" id="jenis" style="width:150px;"> <button type="button" onclick="clearInput('jenis')">Hapus</button><br><br>
+    Berapa Sisi: <input type="text" id="sisi" style="width:50px;" placeholder="cth: 2"> <button type="button" onclick="clearInput('sisi')">Hapus</button><br><br>
+    Berapa Menit: <input type="text" id="menit" style="width:50px;" placeholder="cth: 13"> <button type="button" onclick="clearInput('menit')">Hapus</button><br><br>
+    Print per: <input type="text" id="per" style="width:50px;" placeholder="cth: 3"> <button type="button" onclick="clearInput('per')">Hapus</button><br><br>
+    Full Print: <input type="text" id="full" style="width:50px;" placeholder="cth: 200"> <button type="button" onclick="clearInput('full')">Hapus</button><br><br>
+
+    <button type="button" id="addBtn" onclick="addData()" style="background:#4CAF50; color:white; padding:5px 10px;">Tambah RO</button>
+    <button type="button" id="updateBtn" onclick="updateData()" style="display:none; background:#2196F3; color:white; padding:5px 10px;">Update RO</button>
+    <button type="button" id="cancelEditBtn" onclick="cancelEdit()" style="display:none; background:#f44336; color:white; padding:5px 10px;">Cancel Edit</button>
+  </div>
+
+  <button type="button" onclick="copySelected()" style="padding:5px 10px;">Copy Data Terpilih</button>
+  <button type="button" onclick="calculateTotalSelected()" style="padding:5px 10px;">Hitung Total Waktu Terpilih</button>
+  <button type="button" onclick="checkAll()" style="padding:5px 10px;">Centang Semua</button>
+  <button type="button" onclick="uncheckAll()" style="padding:5px 10px;">Hapus Centang Semua</button>
+  <button type="button" onclick="deleteAll()" style="padding:5px 10px; background:#f44336; color:white;">Hapus Semua</button>
+
+  <h3>HASIL:</h3>
+  <div id="output"></div>
+
+  <h3>Total Waktu Terpilih:</h3>
+  <pre id="totalOutput" style="background:#e8f0fe; padding:10px; border:1px solid #ccc;"></pre>
+
+  <script>
+    let editIndex = null;
+    let results = [];
+
+    window.onload = function() {
+      let stored = localStorage.getItem("lemburResults");
+      if (stored) {
+        results = JSON.parse(stored);
+        renderOutput();
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem("lemburResults", JSON.stringify(results));
+    }
+
+    function clearInput(id) {
+      document.getElementById(id).value = '';
+      document.getElementById(id).focus();
+    }
+
+    function addData() {
+      let data = getFormData();
+      if (!data) return;
+      results.push(data);
+      saveToStorage();
+      renderOutput();
+      clearForm();
+    }
+
+    function updateData() {
+      let data = getFormData();
+      if (!data) return;
+      if (editIndex !== null) {
+        results[editIndex] = data;
+        editIndex = null;
+        toggleEditButtons(false);
+        saveToStorage();
+        renderOutput();
+        clearForm();
+      }
+    }
+
+    function getFormData() {
+      let ro = document.getElementById("ro").value.trim();
+      let nama = document.getElementById("nama").value.trim();
+      nama = nama.charAt(0).toUpperCase() + nama.slice(1);
+      let barang = document.getElementById("barang").value.trim();
+      let jenis = document.getElementById("jenis").value.trim();
+      let sisi = parseInt(document.getElementById("sisi").value.trim()) || 1;
+      let menit = parseInt(document.getElementById("menit").value.trim()) || 0;
+      let per = parseInt(document.getElementById("per").value.trim()) || 1;
+      let full = parseInt(document.getElementById("full").value.trim()) || 0;
+
+      if (!ro || !nama) {
+        alert("RO dan Nama wajib diisi!");
+        return null;
+      }
+
+      let line = `${ro}, ${nama}, ${jenis} ${barang}, ${sisi}sisi, ${menit}m, print per ${per}pcs, Full print ${full}pcs`;
+
+      return { line, ro, nama, barang, jenis, sisi, menit, per, full };
+    }
+
+    function renderOutput() {
+      let output = document.getElementById("output");
+      output.innerHTML = "";
+      results.forEach((data, index) => {
+        let div = document.createElement("div");
+        div.style.marginBottom = "15px";
+        div.style.border = "1px solid #ccc";
+        div.style.padding = "8px";
+        div.style.background = "#fdfdfd";
+        div.style.whiteSpace = "pre-wrap";
+
+        let checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = "check_" + index;
+        div.appendChild(checkbox);
+
+        let label = document.createElement("label");
+        label.htmlFor = "check_" + index;
+        label.style.marginLeft = "5px";
+        label.style.fontWeight = "bold";
+        label.textContent = data.line;
+        div.appendChild(label);
+
+        let btnEdit = document.createElement("button");
+        btnEdit.textContent = "Edit";
+        btnEdit.style.marginLeft = "10px";
+        btnEdit.onclick = () => editData(index);
+        div.appendChild(btnEdit);
+
+        let btnDelete = document.createElement("button");
+        btnDelete.textContent = "Hapus";
+        btnDelete.style.marginLeft = "5px";
+        btnDelete.onclick = () => deleteData(index);
+        div.appendChild(btnDelete);
+
+        let batch = Math.ceil(data.full / data.per);
+        let batchSisi = batch * data.sisi;
+        let totalMenit = data.menit * batchSisi;
+        let jam = Math.floor(totalMenit / 60);
+        let menitSisa = totalMenit % 60;
+        let detik = 0;
+
+        let waktuDiv = document.createElement("pre");
+        waktuDiv.style.marginLeft = "25px";
+        waktuDiv.style.marginTop = "5px";
+        waktuDiv.style.background = "#f0f8ff";
+        waktuDiv.style.padding = "5px";
+        waktuDiv.style.border = "1px solid #ccc";
+        waktuDiv.textContent = `[ Waktu ]
+Data: ${data.line}
+Jumlah batch: ${batch}pcs
+Faktor sisi: ${data.sisi}
+Jumlah batch sisi: ${batchSisi}pcs
+Total waktu: ${jam} jam ${menitSisa} menit ${detik} detik`;
+        div.appendChild(waktuDiv);
+
+        output.appendChild(div);
+      });
+    }
+
+    function editData(index) {
+      let data = results[index];
+      document.getElementById("ro").value = data.ro;
+      document.getElementById("nama").value = data.nama;
+      document.getElementById("jenis").value = data.jenis;
+      document.getElementById("barang").value = data.barang;
+      document.getElementById("sisi").value = data.sisi;
+      document.getElementById("menit").value = data.menit;
+      document.getElementById("per").value = data.per;
+      document.getElementById("full").value = data.full;
+
+      editIndex = index;
+      toggleEditButtons(true);
+    }
+
+    function cancelEdit() {
+      editIndex = null;
+      clearForm();
+      toggleEditButtons(false);
+    }
+
+    function toggleEditButtons(isEditing) {
+      document.getElementById("addBtn").style.display = isEditing ? "none" : "inline";
+      document.getElementById("updateBtn").style.display = isEditing ? "inline" : "none";
+      document.getElementById("cancelEditBtn").style.display = isEditing ? "inline" : "none";
+    }
+
+    function deleteData(index) {
+      if (confirm("Apakah yakin ingin menghapus baris ini?")) {
+        results.splice(index, 1);
+        saveToStorage();
+        renderOutput();
+      }
+    }
+
+    function deleteAll() {
+      if (confirm("Apakah yakin ingin menghapus semua hasil?")) {
+        results = [];
+        localStorage.removeItem("lemburResults");
+        renderOutput();
+        document.getElementById("totalOutput").textContent = "";
+      }
+    }
+
+    function clearForm() {
+      document.getElementById("ro").value = "";
+      document.getElementById("nama").value = "";
+      document.getElementById("barang").value = "";
+      document.getElementById("jenis").value = "";
+      document.getElementById("sisi").value = "";
+      document.getElementById("menit").value = "";
+      document.getElementById("per").value = "";
+      document.getElementById("full").value = "";
+      document.getElementById("ro").focus();
+    }
+
+    function copySelected() {
+      let selected = [];
+      results.forEach((data, index) => {
+        let checkbox = document.getElementById("check_" + index);
+        if (checkbox && checkbox.checked) {
+          selected.push(data.line);
+        }
+      });
+
+      if (selected.length > 0) {
+        const textToCopy = selected.join("\n");
+        navigator.clipboard.writeText(textToCopy)
+          .then(() => alert("Data Input terpilih berhasil disalin!"))
+          .catch(() => fallbackCopy(textToCopy));
+      } else {
+        alert("Belum ada Data Input yang dicentang.");
+      }
+    }
+
+    function fallbackCopy(text) {
+      let temp = document.createElement("textarea");
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+      alert("Data Input terpilih berhasil disalin!");
+    }
+
+    function calculateTotalSelected() {
+      let totalBatch = 0;
+      let totalBatchSisi = 0;
+      let totalMenit = 0;
+      let count = 0;
+
+      results.forEach((data, index) => {
+        let checkbox = document.getElementById("check_" + index);
+        if (checkbox && checkbox.checked) {
+          let batch = Math.ceil(data.full / data.per);
+          let batchSisi = batch * data.sisi;
+          totalBatch += batch;
+          totalBatchSisi += batchSisi;
+          totalMenit += data.menit * batchSisi;
+          count++;
+        }
+      });
+
+      if (count === 0) {
+        alert("Belum ada Data Input yang dicentang.");
+        return;
+      }
+
+      let jam = Math.floor(totalMenit / 60);
+      let menitSisa = totalMenit % 60;
+      let detik = 0;
+
+      document.getElementById("totalOutput").textContent =
+`[ TOTAL DATA TERPILIH ]
+Jumlah item: ${count}
+Jumlah batch total: ${totalBatch}pcs
+Jumlah batch sisi total: ${totalBatchSisi}pcs
+Total waktu: ${jam} jam ${menitSisa} menit ${detik} detik`;
+    }
+
+    function checkAll() {
+      results.forEach((_, index) => {
+        let checkbox = document.getElementById("check_" + index);
+        if (checkbox) checkbox.checked = true;
+      });
+    }
+
+    function uncheckAll() {
+      results.forEach((_, index) => {
+        let checkbox = document.getElementById("check_" + index);
+        if (checkbox) checkbox.checked = false;
+      });
+    }
+  </script>
+</body>
+</html>
